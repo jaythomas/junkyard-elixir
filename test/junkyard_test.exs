@@ -4,24 +4,27 @@ defmodule JunkyardTest do
   doctest Junkyard
 
   test "Game should initialize" do
-    { response, { message, _ }, game } = Junkyard.new
-    assert response == :success
-    assert message == :game_new
-    assert is_map(game)
+    game = Junkyard.new
+    assert game.response == :success
+    assert game.message == :game_new
   end
 
-  test "Game should not start if invalid" do
-    { _, _, game } = Junkyard.new
-    { response, _, game } = Junkyard.start(game)
-    assert response == :invalid_action
+  test "Game should not start if there are less than two players" do
+    game = Junkyard.new
+    |> Junkyard.start
+    assert game.response == :invalid_action
+    assert game.started == false
+    game = Junkyard.player_join(game, "eb045ca12", "Jay")
+    |> Junkyard.start
+    assert game.response == :invalid_action
     assert game.started == false
   end
 
   test "Game should start if valid" do
-    { _, _, game } = Junkyard.new
-    { _, _, game } = Junkyard.player_join(game, "eb045ca12", "Jay")
-    { _, _, game } = Junkyard.player_join(game, "eb045ca13", "Jojo")
-    { _, _, game } = Junkyard.start(game)
+    game = Junkyard.new
+    |> Junkyard.player_join("eb045ca12", "Jay")
+    |> Junkyard.player_join("130cb0eba", "Jojo")
+    |> Junkyard.start
     assert game.started == true
   end
 

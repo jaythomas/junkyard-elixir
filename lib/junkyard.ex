@@ -1,11 +1,14 @@
 defmodule Junkyard do
+
   @hand_size 5
+  @max_health 10
+
   defmodule Card do
     defstruct id: nil, type: nil
   end
 
   defmodule Player do
-    defstruct name: nil, id: nil, hand: []
+    defstruct name: nil, id: nil, hand: [], health: nil
   end
 
   defmodule Deck do
@@ -32,8 +35,15 @@ defmodule Junkyard do
   end
 
   defmodule Game do
-    defstruct lang: :en, deck: Deck.new, players: [], started: false, turn: 1,
-        discard: []
+    defstruct lang: :en,
+      announce: nil,
+      deck: Deck.new,
+      discard: [],
+      message: nil,
+      players: [],
+      response: nil,
+      started: false,
+      turn: 1
   end
   @moduledoc """
   Junkyard core library
@@ -43,10 +53,11 @@ defmodule Junkyard do
   Initialize a new game.
   """
   def new(lang \\ :en) when is_atom(lang) do
-    {
-      :success,
-      parse_message(:game_new, lang),
-      %Game{}
+    %{ %Game{} |
+      lang: lang,
+      response: :success,
+      message: :game_new,
+      announce: parse_message(:game_new, lang)
     }
   end
 
@@ -54,80 +65,70 @@ defmodule Junkyard do
   Given a game's state is valid, start the game.
   """
   def start(game = %Game{:players => [_, _ | _]}) do
-    {
-      :success,
-      parse_message(:start_success, game.lang),
-      %{ game | started: true }
+    #game = Enum.reduce(game.players, game, fn(player, game) ->
+      #deal_hand(game, player)
+    #end)
+    %{ game |
+      started: true,
+      response: :success,
+      message: :start_success,
+      announce: parse_message(:start_success, game.lang)
     }
   end
   def start(game = %Game{:lang => lang}) do
-    {
-      :invalid_action,
-      parse_message(:start_no_players, lang),
-      game
+    %{ game |
+      response: :invalid_action,
+      message: :start_no_players,
+      announce: parse_message(:start_no_players, lang)
     }
   end
 
   def player_join(game = %Game{}, player_id, player_name) when is_bitstring(player_name) do
-    {
-      :success,
-      parse_message(:player_join, game.lang, %{player_name: player_name}),
-      %{ game | players: game.players ++ [
+    %{ game |
+      players: game.players ++ [
         %{
-          id: player_id, name: player_name
+          id: player_id,
+          name: player_name,
+          hand: [],
+          health: @max_health
         }
-      ]}
+      ],
+      response: :success,
+      message: :player_join,
+      announce: parse_message(:player_join, game.lang, %{player_name: player_name})
     }
   end
 
   #def play(game, player, cards) do
   #end
 
-  def parse_message(mess, lang, options \\ %{player_name: ""}) do
-    {mess, %{
+  def parse_message(message, lang, options \\ %{player_name: ""}) do
+    %{
       en: %{
         game_new: "A new game is about to begin. Players may now join",
         start_no_players: "No players have joined the game.",
         start_success: "Game has started.",
         player_join: "#{options.player_name} has joined."
       }
-    }[lang][mess]}
+    }[lang][message]
   end
 
   @doc """
   Fills a player's hand up to @hand_size
   """
   def deal_hand(game, player) do
-    {game, hand} = deal(game, @hand_size - length(player.hand), player.hand)
-    new_player = %{player | :hand => hand}
-    %{game | :players => replace(player, game.players, new_player)}
+    { game, hand } = deal(game, @hand_size - length(player.hand), player.hand)
+    updated_player = %{player | :hand => hand}
+    %{ game | :players => replace(player, game.players, updated_player) }
   end
 
   def replace(item, items, new_value)
-  def replace(item, [], new_value), do: :error
+  def replace(_, [], _), do: :error
   def replace(item, [h | t], new_value) when h == item do
     [new_value | t]
   end
   def replace(item, [h | t], new_value) do
     [h | replace(item, t, new_value)]
-  end
-
-  @doc """
-  Fills out all players hands with 5 cards
-  """
-  def deal_hands(game = %Game{:players => players}) do
-    player_hands = Enum.map(players, fn(p) -> p.hand end)
-    {hands, game} = deal_hands(player_hands, game)
-    players = Enum.map_reduce(players, hands, fn(player, _hands = [h | t]) -> {%{player | :hand => h}, t} end)
-    %{game | :players => players}
-  end
-  defp deal_hands(players, game, hands \\ [])
-  defp deal_hands([], game, hands) do
-    {hands, game}
-  end
-  defp deal_hands([h | t], game, hands) do
-    {game, hand} = deal(game, @hand_size - length(h), h)
-    deal_hands(t, game, hands ++ [hand])
   end
 
   defp deal(game, n, hand \\ [])
@@ -139,7 +140,7 @@ defmodule Junkyard do
   defp deal(game = %Game{:deck => [], :discard => discard}, n, hand) do
     deal(%Game{game | :deck => Enum.shuffle(discard), :discard => []}, n, hand)
   end
-  defp deal(game = %Game{:deck => [], :discard => []}, n, hand) do
+  defp deal(%Game{:deck => [], :discard => []}, _, _) do
     :error
   end
 end
