@@ -1,5 +1,7 @@
 # Junkyard
 
+[![Build Status](https://travis-ci.org/jaythomas/junkyard-elixir.svg?branch=master)](https://travis-ci.org/jaythomas/junkyard-elixir)
+
 **TODO: Add description**
 
 ## Installation
