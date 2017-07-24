@@ -1,51 +1,10 @@
 defmodule Junkyard do
-
-  @hand_size 5
-  @max_health 10
-
-  defmodule Card do
-    defstruct id: nil, type: nil
-  end
-
-  defmodule Player do
-    defstruct name: nil, id: nil, hand: [], health: nil
-  end
-
-  defmodule Deck do
-    @moduledoc """
-    Junkyard standard deck
-    """
-
-    @doc """
-    Generate a new, shuffled deck.
-    """
-    def new do
-      List.duplicate(%Card{
-        id: :a_gun,
-        type: :unstoppable
-      }, 20) ++
-      List.duplicate(%Card{
-        id: :block,
-        type: :counter
-      }, 20)
-      |> Enum.shuffle
-    end
-  end
-
-  defmodule Game do
-    defstruct lang: :en,
-      announce: nil,
-      deck: Deck.new,
-      discard: [],
-      message: nil,
-      players: [],
-      response: nil,
-      started: false,
-      turn: 1
-  end
   @moduledoc """
   Junkyard core library
   """
+
+  @hand_size 5
+  @max_health 10
 
   @doc """
   Initialize a new game.
@@ -124,16 +83,7 @@ defmodule Junkyard do
   def deal_hand(game, player) do
     { game, new_hand } = deal(game, @hand_size - length(player.hand), player.hand)
     updated_player = %{ player | :hand => new_hand }
-    %{ game | :players => replace(player, game.players, updated_player) }
-  end
-
-  def replace(item, items, new_value)
-  def replace(_, [], _), do: :error
-  def replace(item, [h | t], new_value) when h == item do
-    [new_value | t]
-  end
-  def replace(item, [h | t], new_value) do
-    [h | replace(item, t, new_value)]
+    %{ game | :players => Util.replace(player, game.players, updated_player) }
   end
 
   defp deal(game, n, hand) when n < 1, do: { game, hand }
