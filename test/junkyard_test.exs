@@ -28,4 +28,14 @@ defmodule JunkyardTest do
     assert game.started == true
   end
 
+  test "Should deal a player a hand" do
+    game = Junkyard.new
+    initial_deck_size = length(game.deck)
+    game = game
+    |> Junkyard.player_join("eb045ca12", "Jay")
+    |> Junkyard.deal_hand("eb045ca12")
+    assert length(List.first(game.players).hand) == 5
+    assert length(game.deck) == initial_deck_size - 5
+  end
+
 end

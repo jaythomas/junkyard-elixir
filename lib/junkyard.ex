@@ -20,16 +20,14 @@ defmodule Junkyard do
     Generate a new, shuffled deck.
     """
     def new do
-      [
-        %Card{
-          id: :block,
-          type: :counter
-        },
-        %Card{
-          id: :a_gun,
-          type: :unstoppable
-        }
-      ]
+      List.duplicate(%Card{
+        id: :a_gun,
+        type: :unstoppable
+      }, 20) ++
+      List.duplicate(%Card{
+        id: :block,
+        type: :counter
+      }, 20)
       |> Enum.shuffle
     end
   end
@@ -115,10 +113,17 @@ defmodule Junkyard do
 
   @doc """
   Fills a player's hand up to @hand_size
+  TODO: To prevent there being more cards to deal than there are in the
+  discard and deck, shuffle in an additional deck for every 8 players.
+  There should also be an option to limit the game to X number of players.
   """
+  def deal_hand(game, player_id) when is_bitstring(player_id) do
+    player = Enum.find(game.players, fn player -> player.id == player_id end)
+    deal_hand(game, player)
+  end
   def deal_hand(game, player) do
-    { game, hand } = deal(game, @hand_size - length(player.hand), player.hand)
-    updated_player = %{player | :hand => hand}
+    { game, new_hand } = deal(game, @hand_size - length(player.hand), player.hand)
+    updated_player = %{ player | :hand => new_hand }
     %{ game | :players => replace(player, game.players, updated_player) }
   end
 
@@ -131,16 +136,19 @@ defmodule Junkyard do
     [h | replace(item, t, new_value)]
   end
 
-  defp deal(game, n, hand \\ [])
-  defp deal(game, 0, hand), do: {game, hand}
-  defp deal(game, n, hand) when n < 0, do: {game, hand}
-  defp deal(game = %Game{:deck => [h | t]}, n, hand) do
-    deal(%Game{game | :deck => t}, n-1, [h | hand])
+  defp deal(game, n, hand) when n < 1, do: { game, hand }
+  defp deal(game = %Game{ :deck => [], :discard => discard }, n, hand) do
+    deal(
+      %Game{ game | :deck => Enum.shuffle(discard), :discard => [] },
+      n,
+      hand
+    )
   end
-  defp deal(game = %Game{:deck => [], :discard => discard}, n, hand) do
-    deal(%Game{game | :deck => Enum.shuffle(discard), :discard => []}, n, hand)
-  end
-  defp deal(%Game{:deck => [], :discard => []}, _, _) do
-    :error
+  defp deal(game = %Game{ deck: [h | t] }, n, hand) do
+    deal(
+      %Game{ game | :deck => t },
+      n - 1,
+      [h | hand]
+    )
   end
 end
